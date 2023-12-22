@@ -9,9 +9,10 @@ import gsap from "gsap";
 import vShader from "./shaders/vertex.glsl";
 import fShader from "./shaders/fragment.glsl";
 import * as dat from "dat.gui";
+import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
 import CannonDebugRenderer from "./cannondebugrenderer";
 
-
+console.log(SkeletonUtils);
 
 const canvas = document.getElementById("game-surface");
 
@@ -23,9 +24,10 @@ const timeStep = 1 / 60;
 
 // Scene
 const scene = new THREE.Scene();
+
+var evilCubes = new Map();
 //var cannonDebugRenderer = new THREE.CannonDebugRenderer( scene, physicsWorld );
-console.log("scene:");
-console.log(scene);
+
 // var cannonDebugRenderer = new CannonDebugRenderer(scene,physicsWorld);
 
 // RubiksCube Class
@@ -38,6 +40,7 @@ class RubiksCube {
       this.orbitControl = orbitControl;
       this.camera = thirdPersonCam;
       this.currentAction = 'Idle';
+      this.isBoosted = 'false';
      
       this.moveDirection = new THREE.Vector3();
       this.rotateAngle = new THREE.Vector3(0,1,0);
@@ -46,21 +49,35 @@ class RubiksCube {
 
       // constants
       this.fadeDuration = 0.2;
-      this.runVelocity = 30;
+      this.runVelocity = 50;
       this.walkVelocity = 20;
 
       // rigidbody
       const rubiksCubeBody = new CANNON.Body({
-        mass: 3,
+        mass: 5,
         shape: new CANNON.Box(new CANNON.Vec3(2,2,2)), 
         position: new CANNON.Vec3(0,0,0)
       });
       this.rigidbody = rubiksCubeBody;
       physicsWorld.addBody(rubiksCubeBody);
 
-  }
+      this.rigidbody.addEventListener('collide',(e)=>{
+        if(e.body.id != 0){
+          if(e.body.mass === 1){
+            console.log("Collision with an evil cube!");
+            //this.collideWith(e.body);
+            console.log(e.body);
+            // console.log(e.body.id);
+            // console.log("evilCubes[e.body.id]");
+            // console.log(evilCubes.get(e.body.id));
 
-  jump(){
+            this.collideWith(evilCubes.get(e.body.id));
+          }
+          
+
+        }
+   
+      });
 
   }
 
@@ -73,22 +90,30 @@ class RubiksCube {
     // Update the Rubik's cube's state, animation, and progression toward the solution
     const directions = ['w','a','s','d'];
     const space = [' '];
+    const shiftKey = ['shift'];
     const directionPressed = directions.some(key => keysPressed[key] == true);
     const spacePressed = space.some(key => keysPressed[key] == true);
+    const shiftPressed = shiftKey.some(key => keysPressed[key] == true);
 
     var play = 'Idle';
     if(directionPressed){
       play = 'MoveForward';
+      if(shiftPressed){
+        play = 'MoveForwardBoosted';
+        this.isBoosted = true;
+      }
+      else {
+        play = 'MoveForward';
+        this.isBoosted = false;
+      }
     } 
 
     if(spacePressed){
-      console.log("yeyya space pressed");
       play = 'Jump';
       if(directionPressed){
         play = 'JumpWhileMove';
       }
     }
-
 
     if(this.currentAction != play){
       // console.log("animations map: ");
@@ -106,7 +131,7 @@ class RubiksCube {
 
     this.mixer.update(frameTime);
 
-    if(this.currentAction == 'MoveForward' || this.currentAction == 'JumpWhileMove'){
+    if(this.currentAction == 'MoveForward' || this.currentAction == 'JumpWhileMove' || this.currentAction == 'MoveForwardBoosted'){
       // calculate towards camera direction
       // angle between the camera view and the character
       var angleYCameraDirection = Math.atan2(
@@ -133,7 +158,7 @@ class RubiksCube {
 
 
       // boost/normal velocity 
-      const velocity = this.currentAction == 'Boost' ? this.runVelocity : this.walkVelocity;
+      const velocity = this.isBoosted ? this.runVelocity : this.walkVelocity;
 
       // move model & camera
       const moveX = this.moveDirection.x * velocity * frameTime;
@@ -145,12 +170,12 @@ class RubiksCube {
 
       if(this.currentAction == 'JumpWhileMove'){
         const moveY = new THREE.Vector3(0.0,1.0,0.0).y * frameTime * velocity;
-        console.log("move x: ");
-        console.log(moveX);
-        console.log("move z: ");
-        console.log(moveZ);
-        console.log("move y: ");
-        console.log(moveY);
+        // console.log("move x: ");
+        // console.log(moveX);
+        // console.log("move z: ");
+        // console.log(moveZ);
+        // console.log("move y: ");
+        // console.log(moveY);
         this.rigidbody.position.y += moveY;
       }
 
@@ -205,12 +230,20 @@ class RubiksCube {
   
   }
 
+ 
+
   collideWith(evilCube) {
+    // console.log("fonksiyona gelen evil cube: ");
+    // console.log(evilCube);
     // Handle collision between the Rubik's cube and an evil cube
-    const damage = calculateDamage(); // Implement a function to calculate damage
-    evilCube.receiveDamage(damage);
-    this.points += calculatePoints(); // Implement a function to calculate points
-    this.progressTowardsSolution();
+    const velocity = this.isBoosted ? this.runVelocity : this.walkVelocity;
+    const momentum = this.rigidbody.mass * velocity; // Implement a function to calculate damage
+    if(momentum > 100){
+      evilCube.receiveDamage(momentum);
+    }
+    
+    //this.points += calculatePoints(); // Implement a function to calculate points
+    //this.progressTowardsSolution();
   }
 
   progressTowardsSolution() {
@@ -219,10 +252,94 @@ class RubiksCube {
   }
 
   // Add other methods as needed
+  static initializeRubiksCube(model, mixer, animationsMap, orbitControl, thirdPersonCam){
+    return new RubiksCube(model, mixer, animationsMap, orbitControl, thirdPersonCam);
+  }
+  
 }
 
-function initializeRubiksCube(model, mixer, animationsMap, orbitControl, thirdPersonCam,rigidbody){
-  return new RubiksCube(model, mixer, animationsMap, orbitControl, thirdPersonCam, rigidbody);
+class EvilCube {
+  constructor(model) {
+    this.model = model;
+    // this.mixer = mixer;
+    // this.animationsMap = animationsMap;
+    this.currentAction = 'Idle';
+    this.tag = 'EvilCube';
+    this.health = 100;
+    this.isDead = false;
+   
+    this.moveDirection = new THREE.Vector3();
+    this.rotateAngle = new THREE.Vector3(0,1,0);
+    this.rotateQuaternion = new THREE.Quaternion();
+    this.cameraTarget = new THREE.Vector3();
+
+    // constants
+    this.fadeDuration = 0.2;
+    this.runVelocity = 30;
+    this.walkVelocity = 20;
+
+    // rigidbody
+    const evilCubeBody = new CANNON.Body({
+      mass: 1,
+      shape: new CANNON.Box(new CANNON.Vec3(1,1,1)), 
+      position: new CANNON.Vec3(Math.random() * 200 - 100,0,Math.random() * 200 - 100)
+
+    });
+    this.rigidbody = evilCubeBody;
+    physicsWorld.addBody(evilCubeBody);
+
+    evilCubes.set(this.rigidbody.id, this);
+
+  }
+
+  receiveDamage(momentum) {
+    console.log("Gelen momentum: ");
+    console.log(momentum);
+    // Calculate damage based on collision momentum
+    //const impactSpeed = momentum.length(); // Magnitude of the collision speed
+
+    // Adjust this factor based on gameplay testing
+    const damageFactor = 0.065; // You may need to fine-tune this value
+
+    // Calculate damage based on impact speed and a scaling factor
+    // const damage = Math.floor(impactSpeed * damageFactor);
+    const damage = Math.floor(momentum * damageFactor);
+
+    // Inflict damage on the evil cube
+    this.health -= damage;
+
+    // Ensure that health doesn't go below zero
+    this.health = Math.max(0, this.health);
+
+    console.log("Received damage, damage is: " + damage);
+    console.log("New value of health: " + this.health);
+
+    // Handle any additional logic related to receiving damage
+  }
+
+  update(frameTime){
+    this.updateModelPosition();
+    if(this.health <= 0){
+        this.destroyEvilCube();
+        evilCubes.delete(this.rigidbody.id);
+    }
+  }
+
+  updateModelPosition(){
+    this.model.position.copy(this.rigidbody.position);
+    this.model.quaternion.copy(this.rigidbody.quaternion);
+  }
+
+  static initializeEvilCube(model){
+    return new EvilCube(model);
+  }
+
+  destroyEvilCube(){
+    physicsWorld.removeBody(this.rigidbody);
+    scene.remove(this.model);
+  
+  }
+
 }
 
 // CONTROL KEYS
@@ -253,7 +370,7 @@ loadingManager.onError = () => {
 
 const textureLoader = new THREE.TextureLoader(loadingManager);
 const colorTexture = textureLoader.load("/texture/groundTexture.jpg");
-console.log(colorTexture);
+// console.log(colorTexture);
 
 
 // THREE.JS
@@ -334,7 +451,7 @@ scene.add(boxMesh);
 
 // Box Rigid Body
 const boxBody = new CANNON.Body({
-  mass: 1,
+  mass: 1.5,
   shape: new CANNON.Box(new CANNON.Vec3(1,1,1)), 
   position: new CANNON.Vec3(1,20,0)
 });
@@ -393,7 +510,6 @@ let animationMixer;
 var rubiksCube = null;
 gltfLoader.load("/assets/rubikscube10.glb", (gltf) => {
 
-
   const rubiksCubeModel = gltf.scene;
   rubiksCubeModel.traverse(function (object){
     if (object.isMesh){ 
@@ -407,18 +523,18 @@ gltfLoader.load("/assets/rubikscube10.glb", (gltf) => {
   clips.forEach((clip)=>{
     animationsMap.set(clip.name, animationMixer.clipAction(clip))
   });
-  console.log(clips);
-  const clip = THREE.AnimationClip.findByName(clips, 'JumpWhileMove');
-  console.log("clip: ");
-  console.log(clip);
+  // console.log(clips);
+  // const clip = THREE.AnimationClip.findByName(clips, 'MoveForwardBoosted');
+  // console.log("clip: ");
+  // console.log(clip);
 
-  const action = animationMixer.clipAction(clip);
+  // const action = animationMixer.clipAction(clip);
   // console.log(action);
   // console.log("rubikscubemodel: ");
   // console.log(rubiksCubeModel);
-  //action.play();
+  // action.play();
 
-  rubiksCube = initializeRubiksCube(gltf.scene,animationMixer,animationsMap,orbitControls,camera);
+  rubiksCube = RubiksCube.initializeRubiksCube(gltf.scene,animationMixer,animationsMap,orbitControls,camera);
   
 },(xhr)=> { 
   console.log( (xhr.loaded / xhr.total * 100) + '%loaded');
@@ -426,63 +542,46 @@ gltfLoader.load("/assets/rubikscube10.glb", (gltf) => {
 // called when loading has errors
 (error)=>{
   // TO LOAD A COMPRESSED MODEL, YOU NEED TO USE THE DRACOLOADER
-  console.log('An error happened while loading the model: ' + error);
+  console.log("An error happened while loading the Rubik's Cube Model: " + error);
 });
-console.log("hey:");
-console.log(rubiksCube);
 
-// Box Rigid Body
-/*
-const rubiksCubeBody = new CANNON.Body({
-  mass: 3,
-  shape: new CANNON.Box(new CANNON.Vec3(2,2,2)), 
-  position: new CANNON.Vec3(0,0,0)
-});
-physicsWorld.addBody(rubiksCubeBody);
-*/
+var evilCube = null;
+// Evil Cube
+gltfLoader.load("/assets/evilcube.glb", (gltf) => {
+  const evilCubeModel = gltf.scene;
+  // console.log("evil cube model: ");
+  // console.log(evilCubeModel);
+  evilCubeModel.traverse(function (object){
+    if (object.isMesh){ 
+      object.castShadow = true;
+    }
+  });
+  for(let i = 0; i < 20; i++){
+    const evilCubeClone = SkeletonUtils.clone(evilCubeModel);
+    // evilCubeClone.matrixAutoUpdate = false;
+    console.log("clone: ");
+    console.log(evilCubeClone);
+    scene.add(evilCubeClone);
+    
+    EvilCube.initializeEvilCube(evilCubeClone);
 
-/*
-gltfLoader.load("/models/1.glb", (glb) => {
-  //increasing the number of vertices
-  const samplerMesh = new MeshSurfaceSampler(glb.scene.children[0]).build();
-  const particlesNumber = 25000;
-  const particlesGeometry = new THREE.BufferGeometry();
-  const particlesArray = new Float32Array(particlesNumber * 3);
-  for (let i = 0; i < particlesNumber; i++) {
-    const particlePosition = new THREE.Vector3();
-    samplerMesh.sample(particlePosition);
-    particlesArray.set(
-      [particlePosition.x, particlePosition.y, particlePosition.z],
-      i * 3
-    );
   }
-  particlesGeometry.setAttribute(
-    "position",
-    new THREE.BufferAttribute(particlesArray, 3)
-  );
+  //evilCubeModel.position.set(5,2,4);
+  //scene.add(evilCubeModel);
 
-  //changing model into particles
-  glb.scene.children[0] = new THREE.Points(
-    particlesGeometry,
-    new THREE.RawShaderMaterial({
-      vertexShader: vShader,
-      fragmentShader: fShader,
-      uniforms: {
-        u_color_1: { value: new THREE.Color(`${firstModelColor1}`) },
-        u_color_2: { value: new THREE.Color(`${firstModelColor2}`) },
-        u_scale: { value: 0 },
-      },
-      depthTest: false,
-      blending: THREE.AdditiveBlending,
-    })
-  );
+  //evilCube = EvilCube.initializeEvilCube(gltf.scene);
 
-  glb.scene.children[0].scale.set(0.7, 0.7, 0.7);
-  glb.scene.children[0].position.x = 0.5;
-  glb.scene.children[0].rotation.y = Math.PI * 0.5;
-  modelArray[0] = glb.scene;
+
+  
+},(xhr)=> { 
+  console.log( (xhr.loaded / xhr.total * 100) + '%loaded');
+},
+// called when loading has errors
+(error)=>{
+  // TO LOAD A COMPRESSED MODEL, YOU NEED TO USE THE DRACOLOADER
+  console.log("An error happened while loading Evil Cube Model: " + error);
 });
-*/
+
 
 
 
@@ -509,6 +608,20 @@ const animate = () => {
   if(rubiksCube){
     rubiksCube.update(frameTime,keysPressed,mixerUpdateDelta);
   }
+
+  evilCubes.forEach((evilCube,evilCubeId) => {
+    if(evilCube){
+      if(!evilCube.isDead){
+        evilCube.update(frameTime);
+      }
+    }
+  });
+
+  /*
+  if(evilCube){
+    
+  }
+  */
   
 
   //Update Controls
