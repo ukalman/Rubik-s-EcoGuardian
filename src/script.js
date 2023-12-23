@@ -12,6 +12,91 @@ import * as dat from "dat.gui";
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
 import CannonDebugRenderer from "./cannondebugrenderer";
 
+document.getElementById('quitButton').addEventListener('click', function() {
+  // Kullanıcıya oyundan çıkması için bir mesaj göster
+  var exit = confirm('Are you sure you want to quit the game?');
+  if (exit) {
+    // Kullanıcı evet dediyse, sayfayı kapatmaya çalış
+    window.close();
+    // Eğer tarayıcı yeni sekme kapatmayı engellerse, kullanıcıyı ana sayfaya yönlendir
+    if (!window.closed) {
+      window.location.href = 'about:blank'; // veya kullanıcıyı başka bir sayfaya yönlendirin
+    }
+  }
+});
+
+document.getElementById('playButton').addEventListener('click', function() {
+  // Oyun başlatma işlevleri burada yer alacak
+  console.log('Oyun başlatıldı');
+  // Örnek olarak, menüyü gizleyebilirsiniz
+  document.getElementById('mainMenu').style.display = 'none';
+});
+
+document.getElementById('optionsButton').addEventListener('click', function() {
+  const optionsMenu = document.getElementById('optionsMenu');
+
+  document.getElementById('playButton').style.display = 'none';
+  document.getElementById('quitButton').style.display = 'none';
+  document.getElementById('title').style.display = 'none';
+  // Eğer başka butonlar da varsa, onları da gizleyin
+  // document.getElementById('anotherButton').style.display = 'none';
+
+  // Options butonunu deaktif hale getir (veya gizle)
+  this.style.display = 'none';
+  if (optionsMenu.style.display === 'none') {
+    optionsMenu.style.display = 'block';
+  } else {
+    optionsMenu.style.display = 'none';
+
+  }
+});
+
+document.querySelectorAll('.difficulty-button').forEach(button => {
+  button.addEventListener('click', function() {
+    const difficulty = this.getAttribute('data-difficulty');
+    console.log('Seçilen zorluk: ' + difficulty);
+    // Zorluğa göre oyun ayarlarınızı burada yapabilirsiniz
+  });
+});
+document.getElementById('backButton').addEventListener('click', function() {
+  // Options menüsünü gizle
+  document.getElementById('optionsMenu').style.display = 'none';
+
+
+  document.getElementById('title').style.display = 'block';
+  document.getElementById('playButton').style.display = 'block';
+  document.getElementById('optionsButton').style.display = 'block';
+  document.getElementById('quitButton').style.display = 'block';
+  // Diğer ana menü butonlarınız varsa, onları da burada tekrar gösterin
+});
+
+let isGamePaused = false;
+
+// Oyunu duraklatma ve devam ettirme işlevleri
+function pauseGame() {
+  isGamePaused = true;
+  // Oyunu duraklatma işlemleri burada yer alacak
+  document.getElementById('pause').style.display = 'block';
+
+}
+
+function resumeGame() {
+  isGamePaused = false;
+  // Oyunu devam ettirme işlemleri burada yer alacak
+  document.getElementById('pause').style.display = 'none';
+}
+
+// Klavye olayını dinleme
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    if (!isGamePaused) {
+      pauseGame();
+    } else {
+      resumeGame();
+    }
+  }
+});
+
 console.log(SkeletonUtils);
 
 const canvas = document.getElementById("game-surface");
@@ -87,123 +172,141 @@ class RubiksCube {
   }
 
   update(frameTime, keysPressed, delta) {
-    // Update the Rubik's cube's state, animation, and progression toward the solution
-    const directions = ['w','a','s','d'];
-    const space = [' '];
-    const shiftKey = ['shift'];
-    const directionPressed = directions.some(key => keysPressed[key] == true);
-    const spacePressed = space.some(key => keysPressed[key] == true);
-    const shiftPressed = shiftKey.some(key => keysPressed[key] == true);
 
-    var play = 'Idle';
-    if(directionPressed){
-      play = 'MoveForward';
-      if(shiftPressed){
-        play = 'MoveForwardBoosted';
-        this.isBoosted = true;
-      }
-      else {
-        play = 'MoveForward';
-        this.isBoosted = false;
-      }
-    } 
+    if(isGamePaused!==true){
 
-    if(spacePressed){
-      play = 'Jump';
+
+      // Update the Rubik's cube's state, animation, and progression toward the solution
+      const directions = ['w','a','s','d'];
+      const space = [' '];
+      const shiftKey = ['shift'];
+      const directionPressed = directions.some(key => keysPressed[key] == true);
+      const spacePressed = space.some(key => keysPressed[key] == true);
+      const shiftPressed = shiftKey.some(key => keysPressed[key] == true);
+
+      var play = 'Idle';
       if(directionPressed){
-        play = 'JumpWhileMove';
-      }
-    }
-
-    if(this.currentAction != play){
-      // console.log("animations map: ");
-      // console.log(this.animationsMap);
-      // console.log("current action: " + this.currentAction);
-      const toPlay = this.animationsMap.get(play);
-      const current = this.animationsMap.get(this.currentAction);
-      // console.log(current);
-
-      current.fadeOut(this.fadeDuration);
-      toPlay.reset().fadeIn(this.fadeDuration).play();
-
-      this.currentAction = play;
-    }
-
-    this.mixer.update(frameTime);
-
-    if(this.currentAction == 'MoveForward' || this.currentAction == 'JumpWhileMove' || this.currentAction == 'MoveForwardBoosted'){
-      // calculate towards camera direction
-      // angle between the camera view and the character
-      var angleYCameraDirection = Math.atan2(
-        (this.camera.position.x - this.model.position.x),
-        (this.camera.position.z - this.model.position.z)
-      );
-
-      // diagonal movement angle offset
-      var directionOffset = this.directionOffset(keysPressed);
-      
-      // rotate model
-      // make the model rotate towards that direction stepwise
-      this.rotateQuaternion.setFromAxisAngle(this.rotateAngle, angleYCameraDirection + directionOffset);
-      this.model.quaternion.rotateTowards(this.rotateQuaternion, 0.2);
-      // This part is important, just trying something
-      this.rigidbody.quaternion.copy(this.model.quaternion);
-
-      // calculate direction
-      // based on the previously calculated angles, we calculated the vector which represents the direction into which the model must move
-      this.camera.getWorldDirection(this.moveDirection)
-      this.moveDirection.y = 0;
-      this.moveDirection.normalize();
-      this.moveDirection.applyAxisAngle(this.rotateAngle,directionOffset);
-
-
-      // boost/normal velocity 
-      const velocity = this.isBoosted ? this.runVelocity : this.walkVelocity;
-
-      // move model & camera
-      const moveX = this.moveDirection.x * velocity * frameTime;
-      const moveZ = this.moveDirection.z * velocity * frameTime;
-      // this.model.position.x += moveX;
-      // this.model.position.z += moveZ;
-      this.rigidbody.position.x += moveX;
-      this.rigidbody.position.z += moveZ;
-
-      if(this.currentAction == 'JumpWhileMove'){
-        const moveY = new THREE.Vector3(0.0,1.0,0.0).y * frameTime * velocity;
-        // console.log("move x: ");
-        // console.log(moveX);
-        // console.log("move z: ");
-        // console.log(moveZ);
-        // console.log("move y: ");
-        // console.log(moveY);
-        this.rigidbody.position.y += moveY;
+        play = 'MoveForward';
+        if(shiftPressed){
+          play = 'MoveForwardBoosted';
+          this.isBoosted = true;
+        }
+        else {
+          play = 'MoveForward';
+          this.isBoosted = false;
+        }
       }
 
+      if(spacePressed){
+        play = 'Jump';
+        if(directionPressed){
+          play = 'JumpWhileMove';
+        }
+      }
 
-      this.updateModelPosition();
-      this.updateCameraTarget(moveX, moveZ);
+      if(this.currentAction != play){
+        // console.log("animations map: ");
+        // console.log(this.animationsMap);
+        // console.log("current action: " + this.currentAction);
+        const toPlay = this.animationsMap.get(play);
+        const current = this.animationsMap.get(this.currentAction);
+        // console.log(current);
+
+        current.fadeOut(this.fadeDuration);
+        toPlay.reset().fadeIn(this.fadeDuration).play();
+
+        this.currentAction = play;
+      }
+
+      this.mixer.update(frameTime);
+
+      if(this.currentAction == 'MoveForward' || this.currentAction == 'JumpWhileMove' || this.currentAction == 'MoveForwardBoosted'){
+        // calculate towards camera direction
+        // angle between the camera view and the character
+        var angleYCameraDirection = Math.atan2(
+            (this.camera.position.x - this.model.position.x),
+            (this.camera.position.z - this.model.position.z)
+        );
+
+        // diagonal movement angle offset
+        var directionOffset = this.directionOffset(keysPressed);
+
+        // rotate model
+        // make the model rotate towards that direction stepwise
+        this.rotateQuaternion.setFromAxisAngle(this.rotateAngle, angleYCameraDirection + directionOffset);
+        this.model.quaternion.rotateTowards(this.rotateQuaternion, 0.2);
+        // This part is important, just trying something
+        this.rigidbody.quaternion.copy(this.model.quaternion);
+
+        // calculate direction
+        // based on the previously calculated angles, we calculated the vector which represents the direction into which the model must move
+        this.camera.getWorldDirection(this.moveDirection)
+        this.moveDirection.y = 0;
+        this.moveDirection.normalize();
+        this.moveDirection.applyAxisAngle(this.rotateAngle,directionOffset);
+
+
+        // boost/normal velocity
+        const velocity = this.isBoosted ? this.runVelocity : this.walkVelocity;
+
+        // move model & camera
+        const moveX = this.moveDirection.x * velocity * frameTime;
+        const moveZ = this.moveDirection.z * velocity * frameTime;
+        // this.model.position.x += moveX;
+        // this.model.position.z += moveZ;
+        this.rigidbody.position.x += moveX;
+        this.rigidbody.position.z += moveZ;
+
+        if(this.currentAction === 'JumpWhileMove'){
+          const moveY = new THREE.Vector3(0.0,1.0,0.0).y * frameTime * velocity;
+          // console.log("move x: ");
+          // console.log(moveX);
+          // console.log("move z: ");
+          // console.log(moveZ);
+          // console.log("move y: ");
+          // console.log(moveY);
+          this.rigidbody.position.y += moveY;
+        }
+
+
+        this.updateModelPosition();
+        this.updateCameraTarget(moveX, moveZ);
+
+
+
+    }
+
     }
 
   }
 
   updateCameraTarget(moveX, moveZ) {
-    // move camera
-    this.camera.position.x += moveX;
-    this.camera.position.z += moveZ;
 
-    // update camera target
-    this.cameraTarget.x = this.model.position.x;
-    this.cameraTarget.y = this.model.position.y + 1;
-    this.cameraTarget.z = this.model.position.z;
-    this.orbitControl.target = this.cameraTarget;
+    if(isGamePaused!==true){
+
+      // move camera
+      this.camera.position.x += moveX;
+      this.camera.position.z += moveZ;
+
+      // update camera target
+      this.cameraTarget.x = this.model.position.x;
+      this.cameraTarget.y = this.model.position.y + 1;
+      this.cameraTarget.z = this.model.position.z;
+      this.orbitControl.target = this.cameraTarget;
+
+    }
+
   }
 
   updateModelPosition(){
+    if(isGamePaused!==true){
     this.model.position.copy(this.rigidbody.position);
     this.model.quaternion.copy(this.rigidbody.quaternion);
+    }
   }
 
   directionOffset(keysPressed){
+
     var directionOffset = 0; // w
 
     if(keysPressed.w){
@@ -318,16 +421,20 @@ class EvilCube {
   }
 
   update(frameTime){
-    this.updateModelPosition();
-    if(this.health <= 0){
+    if(isGamePaused!==true) {
+      this.updateModelPosition();
+      if (this.health <= 0) {
         this.destroyEvilCube();
         evilCubes.delete(this.rigidbody.id);
+      }
     }
   }
 
   updateModelPosition(){
+    if(isGamePaused!==true){
     this.model.position.copy(this.rigidbody.position);
     this.model.quaternion.copy(this.rigidbody.quaternion);
+    }
   }
 
   static initializeEvilCube(model){
@@ -643,7 +750,10 @@ const animate = () => {
   // rubiksCubeModel.quaternion.copy(rubiksCubeBody.quaternion);
 
   //Renderer
-  renderer.render(scene, camera);
+  if(isGamePaused!==true){
+    renderer.render(scene, camera);
+  }
+
 
   //RequestAnimationFrame
   window.requestAnimationFrame(animate);

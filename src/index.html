@@ -6,6 +6,37 @@
     <title>Rubik's EcoGuardian</title>
   </head>
   <body>
+
+  <div id="pauseDiv" >
+
+    <h1 id="pause" class="menu-message">Paused</h1>
+
+  </div>
+  <div id="mainMenu" class="menu-screen">
+
+
+    <h1 id="title" class="menu-message">Rubik's EcoGuardian</h1>
+
+
+    <button id="playButton" class="menu-button">Play</button>
+    <button id="optionsButton" class="menu-button">Settings</button>
+    <button id="quitButton" class="menu-button">Quit</button>
+    <!-- Options Menüsü -->
+    <div id="optionsMenu" class="options-menu" style="display:none;">
+      <h4 class="menu-message">Choose a diffuculty</h4>
+      <button class="difficulty-button" data-difficulty="easy">Easy</button>
+      <button class="difficulty-button" data-difficulty="moderate">Moderate</button>
+      <button class="difficulty-button" data-difficulty="hard">Hard</button>
+      <button id="backButton" class="menu-button">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor" class="bi bi-arrow-left" viewBox="0 0 16 16">
+          <path fill-rule="evenodd" d="M15 8a.5.5 0 0 1-.5.5H2.707l3.147 3.146a.5.5 0 0 1-.708.708l-4-4a.5.5 0 0 1 0-.708l4-4a.5.5 0 0 1 .708 0l3.147 3.146H14.5a.5.5 0 0 1 .5.5z"/>
+        </svg>
+
+
+        Back</button>
+    </div>
+
+  </div>
     <canvas id="game-surface">
       <button><h1>saaa</h1></button>
     </canvas>
