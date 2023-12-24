@@ -81,8 +81,8 @@ body {
 
   background: linear-gradient(
           to right,
-          hsl(216, 100%, 62%),
-          hsl(287, 100%, 59%)
+          hsl(98 100% 62%),
+          hsl(204 100% 59%)
   );
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -150,12 +150,3 @@ body {
   margin-bottom: 15px;
 }
 
-.cubed {
-
-
-  background: linear-gradient(magenta, magenta) 2em 7em / 2em 7em, /* Diğer arka planlar için de benzer düzenlemeler yapılmalı */
-  linear-gradient(magenta 1em, pink 3em) 1em 2em / 1em 4em; /* Sadece örnek olarak iki katman ekledim */
-  background-repeat: no-repeat;
-  transform: skewY(-12deg) scale(0.9);
-  transform-origin: 0 0;
-}

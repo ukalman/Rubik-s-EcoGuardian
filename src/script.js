@@ -72,6 +72,8 @@ document.getElementById('backButton').addEventListener('click', function() {
 
 let isGamePaused = false;
 
+
+
 // Oyunu duraklatma ve devam ettirme işlevleri
 function pauseGame() {
   isGamePaused = true;
@@ -84,6 +86,7 @@ function resumeGame() {
   isGamePaused = false;
   // Oyunu devam ettirme işlemleri burada yer alacak
   document.getElementById('pause').style.display = 'none';
+
 }
 
 // Klavye olayını dinleme
@@ -165,6 +168,8 @@ class RubiksCube {
       });
 
   }
+
+
 
 
   boost() {
@@ -361,6 +366,69 @@ class RubiksCube {
   
 }
 
+
+class CubeGraph {
+  constructor(cubes, playerCube, scene) {
+    this.cubes = cubes; // All evil cubes
+    this.playerCube = playerCube; // The player cube
+    this.scene = scene; // Reference to the Three.js scene
+    this.arrowHelper = this.createArrowHelper();
+    this.scene.add(this.arrowHelper);
+  }
+
+  createArrowHelper() {
+    // Create an ArrowHelper with an initial dummy direction and add it to the scene
+    const arrowDir = new THREE.Vector3(0, 1, 0);
+    const arrowPos = this.playerCube.model.position;
+    const arrowColor = 0xff0000;
+    const arrowLength = 4;
+    return new THREE.ArrowHelper(arrowDir, arrowPos, arrowLength, arrowColor);
+  }
+
+
+  findNearestCube() {
+    let nearestCube = null;
+    let minDistance = Infinity;
+
+    this.cubes.forEach((evilCube) => {
+      const distance = this.playerCube.model.position.distanceTo(evilCube.model.position);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestCube = evilCube;
+      }
+    });
+
+    return nearestCube;
+  }
+
+  updateArrowDirection() {
+    const nearestCube = this.findNearestCube();
+    if (nearestCube) {
+      const direction = new THREE.Vector3().subVectors(nearestCube.model.position, this.playerCube.model.position).normalize();
+      const arrowPosition = this.playerCube.model.position.clone();
+
+      // Arrow'un yüksekliğini artır
+      arrowPosition.y += 2; // Örnek olarak, yüksekliği 2 birim yukarı çıkarın
+
+      this.arrowHelper.position.copy(arrowPosition);
+      this.arrowHelper.setDirection(direction);
+
+      // Okun boyunu ve baş kısmını daha büyük yaparak kalın bir görünüm verin
+      const arrowLength = this.playerCube.model.position.distanceTo(nearestCube.model.position)/2;
+      const headLength = arrowLength * 0.2; // Ok başının boyunu toplam boyun %20'si yapın
+      const headWidth = headLength * 0.6; // Ok başının genişliğini boyun %60'ı yapın
+
+      this.arrowHelper.setLength(arrowLength, headLength, headWidth); // Update the arrow length dynamically
+    }
+  }
+
+  // ... other methods ...
+}
+
+
+
+
+
 class EvilCube {
   constructor(model) {
     this.model = model;
@@ -394,6 +462,9 @@ class EvilCube {
     evilCubes.set(this.rigidbody.id, this);
 
   }
+
+
+
 
   receiveDamage(momentum) {
     console.log("Gelen momentum: ");
@@ -615,6 +686,8 @@ window.addEventListener("resize", () => {
 //1) Rubiks Cube
 let animationMixer;
 var rubiksCube = null;
+
+let cubeGraph;
 gltfLoader.load("/assets/rubikscube10.glb", (gltf) => {
 
   const rubiksCubeModel = gltf.scene;
@@ -642,6 +715,8 @@ gltfLoader.load("/assets/rubikscube10.glb", (gltf) => {
   // action.play();
 
   rubiksCube = RubiksCube.initializeRubiksCube(gltf.scene,animationMixer,animationsMap,orbitControls,camera);
+
+  cubeGraph = new CubeGraph(evilCubes, rubiksCube, scene);
   
 },(xhr)=> { 
   console.log( (xhr.loaded / xhr.total * 100) + '%loaded');
@@ -679,6 +754,17 @@ gltfLoader.load("/assets/evilcube.glb", (gltf) => {
   //evilCube = EvilCube.initializeEvilCube(gltf.scene);
 
 
+
+  //***************************************
+  //***************************************
+
+
+
+
+
+//****************************************************
+      //****************************************************
+      //****************************************************
   
 },(xhr)=> { 
   console.log( (xhr.loaded / xhr.total * 100) + '%loaded');
@@ -749,10 +835,17 @@ const animate = () => {
   // rubiksCubeModel.position.copy(rubiksCubeBody.position);
   // rubiksCubeModel.quaternion.copy(rubiksCubeBody.quaternion);
 
+
+  if (cubeGraph && !isGamePaused) {
+    cubeGraph.updateArrowDirection();
+  }
   //Renderer
   if(isGamePaused!==true){
     renderer.render(scene, camera);
   }
+
+
+
 
 
   //RequestAnimationFrame
