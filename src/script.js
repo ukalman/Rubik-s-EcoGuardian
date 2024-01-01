@@ -10,7 +10,95 @@ import vShader from "./shaders/vertex.glsl";
 import fShader from "./shaders/fragment.glsl";
 import * as dat from "dat.gui";
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils';
-import CannonDebugRenderer from "./cannondebugrenderer";
+import CannonDebugger from 'cannon-es-debugger';
+
+document.getElementById('quitButton').addEventListener('click', function() {
+  // Kullanıcıya oyundan çıkması için bir mesaj göster
+  var exit = confirm('Are you sure you want to quit the game?');
+  if (exit) {
+    // Kullanıcı evet dediyse, sayfayı kapatmaya çalış
+    window.close();
+    // Eğer tarayıcı yeni sekme kapatmayı engellerse, kullanıcıyı ana sayfaya yönlendir
+    if (!window.closed) {
+      window.location.href = 'about:blank'; // veya kullanıcıyı başka bir sayfaya yönlendirin
+    }
+  }
+});
+
+document.getElementById('playButton').addEventListener('click', function() {
+  // Oyun başlatma işlevleri burada yer alacak
+  console.log('Oyun başlatıldı');
+  // Örnek olarak, menüyü gizleyebilirsiniz
+  document.getElementById('mainMenu').style.display = 'none';
+});
+
+document.getElementById('optionsButton').addEventListener('click', function() {
+  const optionsMenu = document.getElementById('optionsMenu');
+
+  document.getElementById('playButton').style.display = 'none';
+  document.getElementById('quitButton').style.display = 'none';
+  document.getElementById('title').style.display = 'none';
+  // Eğer başka butonlar da varsa, onları da gizleyin
+  // document.getElementById('anotherButton').style.display = 'none';
+
+  // Options butonunu deaktif hale getir (veya gizle)
+  this.style.display = 'none';
+  if (optionsMenu.style.display === 'none') {
+    optionsMenu.style.display = 'block';
+  } else {
+    optionsMenu.style.display = 'none';
+
+  }
+});
+
+document.querySelectorAll('.difficulty-button').forEach(button => {
+  button.addEventListener('click', function() {
+    const difficulty = this.getAttribute('data-difficulty');
+    console.log('Seçilen zorluk: ' + difficulty);
+    // Zorluğa göre oyun ayarlarınızı burada yapabilirsiniz
+  });
+});
+document.getElementById('backButton').addEventListener('click', function() {
+  // Options menüsünü gizle
+  document.getElementById('optionsMenu').style.display = 'none';
+
+
+  document.getElementById('title').style.display = 'block';
+  document.getElementById('playButton').style.display = 'block';
+  document.getElementById('optionsButton').style.display = 'block';
+  document.getElementById('quitButton').style.display = 'block';
+  // Diğer ana menü butonlarınız varsa, onları da burada tekrar gösterin
+});
+
+let isGamePaused = false;
+
+
+
+// Oyunu duraklatma ve devam ettirme işlevleri
+function pauseGame() {
+  isGamePaused = true;
+  // Oyunu duraklatma işlemleri burada yer alacak
+  document.getElementById('pause').style.display = 'block';
+
+}
+
+function resumeGame() {
+  isGamePaused = false;
+  // Oyunu devam ettirme işlemleri burada yer alacak
+  document.getElementById('pause').style.display = 'none';
+
+}
+
+// Klavye olayını dinleme
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    if (!isGamePaused) {
+      pauseGame();
+    } else {
+      resumeGame();
+    }
+  }
+});
 
 console.log(SkeletonUtils);
 
@@ -25,10 +113,10 @@ const timeStep = 1 / 60;
 // Scene
 const scene = new THREE.Scene();
 
-var evilCubes = new Map();
-//var cannonDebugRenderer = new THREE.CannonDebugRenderer( scene, physicsWorld );
+// CannonDebugger
+const cannonDebugger = new CannonDebugger(scene,physicsWorld);
 
-// var cannonDebugRenderer = new CannonDebugRenderer(scene,physicsWorld);
+var evilCubes = new Map();
 
 // RubiksCube Class
 
@@ -82,128 +170,148 @@ class RubiksCube {
   }
 
 
+
+
   boost() {
     // Implement logic for boosting the Rubik's cube
   }
 
   update(frameTime, keysPressed, delta) {
-    // Update the Rubik's cube's state, animation, and progression toward the solution
-    const directions = ['w','a','s','d'];
-    const space = [' '];
-    const shiftKey = ['shift'];
-    const directionPressed = directions.some(key => keysPressed[key] == true);
-    const spacePressed = space.some(key => keysPressed[key] == true);
-    const shiftPressed = shiftKey.some(key => keysPressed[key] == true);
 
-    var play = 'Idle';
-    if(directionPressed){
-      play = 'MoveForward';
-      if(shiftPressed){
-        play = 'MoveForwardBoosted';
-        this.isBoosted = true;
-      }
-      else {
-        play = 'MoveForward';
-        this.isBoosted = false;
-      }
-    } 
+    if(isGamePaused!==true){
 
-    if(spacePressed){
-      play = 'Jump';
+
+      // Update the Rubik's cube's state, animation, and progression toward the solution
+      const directions = ['w','a','s','d'];
+      const space = [' '];
+      const shiftKey = ['shift'];
+      const directionPressed = directions.some(key => keysPressed[key] == true);
+      const spacePressed = space.some(key => keysPressed[key] == true);
+      const shiftPressed = shiftKey.some(key => keysPressed[key] == true);
+
+      var play = 'Idle';
       if(directionPressed){
-        play = 'JumpWhileMove';
-      }
-    }
-
-    if(this.currentAction != play){
-      // console.log("animations map: ");
-      // console.log(this.animationsMap);
-      // console.log("current action: " + this.currentAction);
-      const toPlay = this.animationsMap.get(play);
-      const current = this.animationsMap.get(this.currentAction);
-      // console.log(current);
-
-      current.fadeOut(this.fadeDuration);
-      toPlay.reset().fadeIn(this.fadeDuration).play();
-
-      this.currentAction = play;
-    }
-
-    this.mixer.update(frameTime);
-
-    if(this.currentAction == 'MoveForward' || this.currentAction == 'JumpWhileMove' || this.currentAction == 'MoveForwardBoosted'){
-      // calculate towards camera direction
-      // angle between the camera view and the character
-      var angleYCameraDirection = Math.atan2(
-        (this.camera.position.x - this.model.position.x),
-        (this.camera.position.z - this.model.position.z)
-      );
-
-      // diagonal movement angle offset
-      var directionOffset = this.directionOffset(keysPressed);
-      
-      // rotate model
-      // make the model rotate towards that direction stepwise
-      this.rotateQuaternion.setFromAxisAngle(this.rotateAngle, angleYCameraDirection + directionOffset);
-      this.model.quaternion.rotateTowards(this.rotateQuaternion, 0.2);
-      // This part is important, just trying something
-      this.rigidbody.quaternion.copy(this.model.quaternion);
-
-      // calculate direction
-      // based on the previously calculated angles, we calculated the vector which represents the direction into which the model must move
-      this.camera.getWorldDirection(this.moveDirection)
-      this.moveDirection.y = 0;
-      this.moveDirection.normalize();
-      this.moveDirection.applyAxisAngle(this.rotateAngle,directionOffset);
-
-
-      // boost/normal velocity 
-      const velocity = this.isBoosted ? this.runVelocity : this.walkVelocity;
-
-      // move model & camera
-      const moveX = this.moveDirection.x * velocity * frameTime;
-      const moveZ = this.moveDirection.z * velocity * frameTime;
-      // this.model.position.x += moveX;
-      // this.model.position.z += moveZ;
-      this.rigidbody.position.x += moveX;
-      this.rigidbody.position.z += moveZ;
-
-      if(this.currentAction == 'JumpWhileMove'){
-        const moveY = new THREE.Vector3(0.0,1.0,0.0).y * frameTime * velocity;
-        // console.log("move x: ");
-        // console.log(moveX);
-        // console.log("move z: ");
-        // console.log(moveZ);
-        // console.log("move y: ");
-        // console.log(moveY);
-        this.rigidbody.position.y += moveY;
+        play = 'MoveForward';
+        if(shiftPressed){
+          play = 'MoveForwardBoosted';
+          this.isBoosted = true;
+        }
+        else {
+          play = 'MoveForward';
+          this.isBoosted = false;
+        }
       }
 
+      if(spacePressed){
+        play = 'Jump';
+        if(directionPressed){
+          play = 'JumpWhileMove';
+        }
+      }
 
-      this.updateModelPosition();
-      this.updateCameraTarget(moveX, moveZ);
+      if(this.currentAction != play){
+        // console.log("animations map: ");
+        // console.log(this.animationsMap);
+        // console.log("current action: " + this.currentAction);
+        const toPlay = this.animationsMap.get(play);
+        const current = this.animationsMap.get(this.currentAction);
+        // console.log(current);
+
+        current.fadeOut(this.fadeDuration);
+        toPlay.reset().fadeIn(this.fadeDuration).play();
+
+        this.currentAction = play;
+      }
+
+      this.mixer.update(frameTime);
+
+      if(this.currentAction == 'MoveForward' || this.currentAction == 'JumpWhileMove' || this.currentAction == 'MoveForwardBoosted'){
+        // calculate towards camera direction
+        // angle between the camera view and the character
+        var angleYCameraDirection = Math.atan2(
+            (this.camera.position.x - this.model.position.x),
+            (this.camera.position.z - this.model.position.z)
+        );
+
+        // diagonal movement angle offset
+        var directionOffset = this.directionOffset(keysPressed);
+
+        // rotate model
+        // make the model rotate towards that direction stepwise
+        this.rotateQuaternion.setFromAxisAngle(this.rotateAngle, angleYCameraDirection + directionOffset);
+        this.model.quaternion.rotateTowards(this.rotateQuaternion, 0.2);
+        // This part is important, just trying something
+        this.rigidbody.quaternion.copy(this.model.quaternion);
+
+        // calculate direction
+        // based on the previously calculated angles, we calculated the vector which represents the direction into which the model must move
+        this.camera.getWorldDirection(this.moveDirection)
+        this.moveDirection.y = 0;
+        this.moveDirection.normalize();
+        this.moveDirection.applyAxisAngle(this.rotateAngle,directionOffset);
+
+
+        // boost/normal velocity
+        const velocity = this.isBoosted ? this.runVelocity : this.walkVelocity;
+
+        // move model & camera
+        const moveX = this.moveDirection.x * velocity * frameTime;
+        const moveZ = this.moveDirection.z * velocity * frameTime;
+        // this.model.position.x += moveX;
+        // this.model.position.z += moveZ;
+        this.rigidbody.position.x += moveX;
+        this.rigidbody.position.z += moveZ;
+
+        if(this.currentAction === 'JumpWhileMove'){
+          const moveY = new THREE.Vector3(0.0,1.0,0.0).y * frameTime * velocity;
+          // console.log("move x: ");
+          // console.log(moveX);
+          // console.log("move z: ");
+          // console.log(moveZ);
+          // console.log("move y: ");
+          // console.log(moveY);
+          this.rigidbody.position.y += moveY;
+        }
+
+
+        this.updateModelPosition();
+        this.updateCameraTarget(moveX, moveZ);
+
+
+
+    }
+
     }
 
   }
 
   updateCameraTarget(moveX, moveZ) {
-    // move camera
-    this.camera.position.x += moveX;
-    this.camera.position.z += moveZ;
 
-    // update camera target
-    this.cameraTarget.x = this.model.position.x;
-    this.cameraTarget.y = this.model.position.y + 1;
-    this.cameraTarget.z = this.model.position.z;
-    this.orbitControl.target = this.cameraTarget;
+    if(isGamePaused!==true){
+
+      // move camera
+      this.camera.position.x += moveX;
+      this.camera.position.z += moveZ;
+
+      // update camera target
+      this.cameraTarget.x = this.model.position.x;
+      this.cameraTarget.y = this.model.position.y + 1;
+      this.cameraTarget.z = this.model.position.z;
+      this.orbitControl.target = this.cameraTarget;
+
+    }
+
   }
 
   updateModelPosition(){
+    if(isGamePaused!==true){
     this.model.position.copy(this.rigidbody.position);
     this.model.quaternion.copy(this.rigidbody.quaternion);
+    }
   }
 
   directionOffset(keysPressed){
+
     var directionOffset = 0; // w
 
     if(keysPressed.w){
@@ -258,6 +366,70 @@ class RubiksCube {
   
 }
 
+
+// CubeGraph Class
+class CubeGraph {
+  constructor(cubes, playerCube, scene) {
+    this.cubes = cubes; // All evil cubes
+    this.playerCube = playerCube; // The player cube
+    this.scene = scene; // Reference to the Three.js scene
+    this.arrowHelper = this.createArrowHelper();
+    this.scene.add(this.arrowHelper);
+  }
+
+  createArrowHelper() {
+    // Create an ArrowHelper with an initial dummy direction and add it to the scene
+    const arrowDir = new THREE.Vector3(0, 1, 0);
+    const arrowPos = this.playerCube.model.position;
+    const arrowColor = 0xff0000;
+    const arrowLength = 4;
+    return new THREE.ArrowHelper(arrowDir, arrowPos, arrowLength, arrowColor);
+  }
+
+
+  findNearestCube() {
+    let nearestCube = null;
+    let minDistance = Infinity;
+
+    this.cubes.forEach((evilCube) => {
+      const distance = this.playerCube.model.position.distanceTo(evilCube.model.position);
+      if (distance < minDistance) {
+        minDistance = distance;
+        nearestCube = evilCube;
+      }
+    });
+
+    return nearestCube;
+  }
+
+  updateArrowDirection() {
+    const nearestCube = this.findNearestCube();
+    if (nearestCube) {
+      const direction = new THREE.Vector3().subVectors(nearestCube.model.position, this.playerCube.model.position).normalize();
+      const arrowPosition = this.playerCube.model.position.clone();
+
+      // Arrow'un yüksekliğini artır
+      arrowPosition.y += 2; // Örnek olarak, yüksekliği 2 birim yukarı çıkarın
+
+      this.arrowHelper.position.copy(arrowPosition);
+      this.arrowHelper.setDirection(direction);
+
+      // Okun boyunu ve baş kısmını daha büyük yaparak kalın bir görünüm verin
+      const arrowLength = this.playerCube.model.position.distanceTo(nearestCube.model.position)/2;
+      const headLength = arrowLength * 0.2; // Ok başının boyunu toplam boyun %20'si yapın
+      const headWidth = headLength * 0.6; // Ok başının genişliğini boyun %60'ı yapın
+
+      this.arrowHelper.setLength(arrowLength, headLength, headWidth); // Update the arrow length dynamically
+    }
+  }
+
+  // ... other methods ...
+}
+
+
+
+
+// Evil Cube Class
 class EvilCube {
   constructor(model) {
     this.model = model;
@@ -292,6 +464,9 @@ class EvilCube {
 
   }
 
+
+
+
   receiveDamage(momentum) {
     console.log("Gelen momentum: ");
     console.log(momentum);
@@ -318,16 +493,20 @@ class EvilCube {
   }
 
   update(frameTime){
-    this.updateModelPosition();
-    if(this.health <= 0){
+    if(isGamePaused!==true) {
+      this.updateModelPosition();
+      if (this.health <= 0) {
         this.destroyEvilCube();
         evilCubes.delete(this.rigidbody.id);
+      }
     }
   }
 
   updateModelPosition(){
+    if(isGamePaused!==true){
     this.model.position.copy(this.rigidbody.position);
     this.model.quaternion.copy(this.rigidbody.quaternion);
+    }
   }
 
   static initializeEvilCube(model){
@@ -370,6 +549,7 @@ loadingManager.onError = () => {
 
 const textureLoader = new THREE.TextureLoader(loadingManager);
 const colorTexture = textureLoader.load("/texture/groundTexture.jpg");
+
 // console.log(colorTexture);
 
 
@@ -384,18 +564,38 @@ gltfLoader.setDRACOLoader(dracoLoader);
 //GUI
 const gui = new dat.GUI();
 
-
 //Environment Map
 const cubeTextureLoader = new THREE.CubeTextureLoader();
 const envTexture = cubeTextureLoader.load([
   "/assets/skybox/px.png",
-  "/assets/skybox/nx.png",
-  "/assets/skybox/py.png",
-  "/assets/skybox/ny.png",
-  "/assets/skybox/pz.png",
-  "/assets/skybox/nz.png"
+"/assets/skybox/nx.png",
+"/assets/skybox/py.png",
+"/assets/skybox/ny.png",
+"/assets/skybox/pz.png",
+"/assets/skybox/nz.png"
 ]);
-scene.background = envTexture;
+const city_envTexture = textureLoader.load("/assets/skybox/spherical_skybox.jpg");
+//scene.background = city_envTexture;
+
+var geometry = new THREE.SphereGeometry( 1000, 500, 40 );
+geometry.scale( - 1, 1, 1 );
+
+var material = new THREE.MeshBasicMaterial( {
+  map: city_envTexture
+} );
+
+const mesh = new THREE.Mesh( geometry, material );
+
+scene.add( mesh );
+
+/*
+"/assets/skybox/px.png",
+"/assets/skybox/nx.png",
+"/assets/skybox/py.png",
+"/assets/skybox/ny.png",
+"/assets/skybox/pz.png",
+"/assets/skybox/nz.png"
+*/
 
 // Lighting
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.3);
@@ -423,9 +623,12 @@ gui.add(directionalLight.position,"y").min(-10).max(10).step(0.01).name("Y Dir D
 const groundGeo = new THREE.PlaneGeometry(300,300);
 const groundMat = new THREE.MeshStandardMaterial({
   color: 0xcff2f2,
+  transparent: true,
+  opacity: 0.1,
   side: THREE.DoubleSide,
-  map: colorTexture
+  //map: colorTexture
 });
+groundMat.transparent = true;
 const groundMesh = new THREE.Mesh(groundGeo,groundMat);
 groundMesh.receiveShadow = true;
 scene.add(groundMesh);
@@ -508,6 +711,8 @@ window.addEventListener("resize", () => {
 //1) Rubiks Cube
 let animationMixer;
 var rubiksCube = null;
+
+let cubeGraph;
 gltfLoader.load("/assets/rubikscube10.glb", (gltf) => {
 
   const rubiksCubeModel = gltf.scene;
@@ -535,6 +740,8 @@ gltfLoader.load("/assets/rubikscube10.glb", (gltf) => {
   // action.play();
 
   rubiksCube = RubiksCube.initializeRubiksCube(gltf.scene,animationMixer,animationsMap,orbitControls,camera);
+
+  cubeGraph = new CubeGraph(evilCubes, rubiksCube, scene);
   
 },(xhr)=> { 
   console.log( (xhr.loaded / xhr.total * 100) + '%loaded');
@@ -572,6 +779,17 @@ gltfLoader.load("/assets/evilcube.glb", (gltf) => {
   //evilCube = EvilCube.initializeEvilCube(gltf.scene);
 
 
+
+  //***************************************
+  //***************************************
+
+
+
+
+
+//****************************************************
+      //****************************************************
+      //****************************************************
   
 },(xhr)=> { 
   console.log( (xhr.loaded / xhr.total * 100) + '%loaded');
@@ -583,6 +801,28 @@ gltfLoader.load("/assets/evilcube.glb", (gltf) => {
 });
 
 
+var city = null;
+gltfLoader.load("/assets/city/city.glb", (gltf) => {
+  city = gltf.scene;
+  city.traverse(function (object){
+    if (object.isMesh){ 
+      object.castShadow = true;
+    }
+  });
+  city.position.set(0,-12,0);
+
+  scene.add(city);
+
+  
+  
+},(xhr)=> { 
+  console.log( (xhr.loaded / xhr.total * 100) + '%loaded');
+},
+// called when loading has errors
+(error)=>{
+  // TO LOAD A COMPRESSED MODEL, YOU NEED TO USE THE DRACOLOADER
+  console.log("An error happened while loading City Model: " + error);
+});
 
 
 //Clock Class
@@ -602,8 +842,8 @@ const animate = () => {
     animationMixer.update(frameTime);
   }
   */
- // cannon js debug renderer
-  // cannonDebugRenderer.update();
+  // cannon debugger
+  cannonDebugger.update();
   
   if(rubiksCube){
     rubiksCube.update(frameTime,keysPressed,mixerUpdateDelta);
@@ -642,8 +882,18 @@ const animate = () => {
   // rubiksCubeModel.position.copy(rubiksCubeBody.position);
   // rubiksCubeModel.quaternion.copy(rubiksCubeBody.quaternion);
 
+
+  if (cubeGraph && !isGamePaused) {
+    cubeGraph.updateArrowDirection();
+  }
   //Renderer
-  renderer.render(scene, camera);
+  if(isGamePaused!==true){
+    renderer.render(scene, camera);
+  }
+
+
+
+
 
   //RequestAnimationFrame
   window.requestAnimationFrame(animate);
