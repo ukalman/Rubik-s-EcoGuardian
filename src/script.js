@@ -100,6 +100,7 @@ document.addEventListener('keydown', function(event) {
   }
 });
 
+
 console.log(SkeletonUtils);
 
 const canvas = document.getElementById("game-surface");
@@ -430,6 +431,7 @@ class CubeGraph {
 
 
 // Evil Cube Class
+
 class EvilCube {
   constructor(model) {
     this.model = model;
